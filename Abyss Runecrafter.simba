@@ -8,19 +8,24 @@ program Abyss;
 
 const
   TypeOfRune = 'nature'; //Only natures are supported
-  AmountToCraft = 85060; //How many pure essence are in your bank
+  AmountToCraft = 22000; //How many pure essence are in your bank
   NumOfPouches = 4; //How many pouches you are using. Keep them in the first inventory slots.
+
   TeleportType = 'glory'; //Only glorys supported. Using house tabs is too expensive
-  GlorysToUse = 32; //How many charged glorys are in your bank
+  GlorysToUse = 54; //How many charged glorys are in your bank
+
   ChargedGloryBankSlot = 24;
   PureEssenceBankSlot = 8;
   FoodBankSlot = 16;
-  FoodID = 334;//To get the id set DoDebug to true and look in the output. Alternatly execute Writeln(R_GetInventoryItems2);                
+  FoodID = 334; //To get the id set DoDebug to true and look in the output. Alternatly execute Writeln(R_GetInventoryItems2);
 
+  UseMiddleMouse = False; //Move the camera using the middle mouse button.
+
+  EnergyPotBankSlot = 32;
+  UseEnergyPots = False;
 const
-  Version = 1.03;
+  Version = 1.04;
   DoDebug = false;  //draw atpas
-  UseEnergyPots = false;  //This is not working. Keep it to false.
 
 var
   GlorysUsed,RunesCrafted,GainedExpStart,StrangeBoxDTM,HoverSkillTimer,RiftCompassDirection:Integer;
@@ -688,13 +693,24 @@ begin
       if (not (R_IsWalking)) then
       begin
         repeat
-          sleep(50 + random(50));
+          case Random(3) of
+            0..1: //
+            SleepAndMoveMouse(100 + random(50));
+            2: //
+            Sleep(100 + random(50));
+          end;
+
           FindRandoms;
           Antiban;
         until (R_IsWalking or ((GetSystemTime - t) > (1000 + random(500))));
       end;
       repeat
-        sleep(50 + random(50));
+        case Random(3) of
+          0..1: //
+          SleepAndMoveMouse(200 + random(50));
+          2: //
+          Sleep(100 + random(50));
+        end;
         FindRandoms;
         Antiban;
       until (R_NearTile(TheTile, 3) or (not R_IsWalking));
@@ -709,13 +725,23 @@ begin
       if (not (R_IsWalking)) then
       begin
         repeat
-          sleep(50 + random(50));
+          case Random(3) of
+            0..1: //
+            SleepAndMoveMouse(100 + random(50));
+            2: //
+            Sleep(100 + random(50));
+          end;
           FindRandoms;
           Antiban;
         until (R_IsWalking or ((GetSystemTime - t) > (1000 + random(500))));
       end;
       repeat
-        sleep(50 + random(50));
+        case Random(3) of
+          0..1: //
+          SleepAndMoveMouse(100 + random(50));
+          2: //
+          Sleep(100 + random(50));
+        end;
         FindRandoms;
         Antiban;
       until ((R_NearTile(TheTile, 5) and R_TileOnMM(NextPoint)) or not (R_IsWalking));
@@ -773,7 +799,8 @@ begin
     if (i = High(Path)) then
     begin
       repeat
-        sleep(100 + random(50));
+        sleep(100+Random(50));
+
         if not (R_TileOnMM(Path[i])) then
         WebWalk(Path[i]);
       until (GetToTile(Path[i], Point( - 1, - 1)));
@@ -920,6 +947,7 @@ end;
 Procedure Teleport;
 var
   x,y,t:integer;
+  pt:TPoint;
 Begin
   Writeln('Teleport');
   FindRandoms();
@@ -927,12 +955,16 @@ Begin
   case TeleportType of
     'glory': //
     begin
-      GaussBox(x,y,662,171,688,197);
-      AL_BrakeMMouse(Point(x, y), 0, 0, False);
-      AL_FastClick(mouse_left);
-      //Al_GameTab(tab_equip);
-      GaussBox(x,y,625,248,660,283);
-      AL_BrakeMMouse(Point(x, y), 0, 0, False);
+      //GaussBox(x,y,662,171,688,197);
+      //AL_BrakeMMouse(Point(x, y), 0, 0, False);
+      //AL_FastClick(mouse_left);
+      Al_GameTab(tab_equip);
+      GetMousePos(pt.x,pt.y);
+      if not (PointInBox(pt,inttobox(625,248,660,283))) then
+      begin
+        GaussBox(x,y,625,248,660,283);
+        AL_BrakeMMouse(Point(x, y), 0, 0, False);
+      end;
       while not R_IsUpText('glory') do
       sleep(100);
       If R_IsUpText('(1')then
@@ -970,6 +1002,90 @@ Begin
   end;
 end;
 
+function calculateDifferenceBetweenAngles(firstAngle, secondAngle:extended):extended;
+var
+  difference:extended;
+begin
+  difference := secondAngle - firstAngle;
+
+  while (difference < -180)do
+  difference := difference + 360;
+
+  while (difference > 180)do
+  difference := difference - 360;
+  result := difference;
+end;
+
+procedure MMouseMiddleCompass(degrees,high:integer);
+var
+  pitch:extended;
+  tomovepitch:extended;
+  toHigh:integer;
+  pt:TPoint;
+  deg:extended;
+  toMove:integer;
+begin
+
+  pitch := R_getcamerapitch;
+  if (high = 0) then
+  begin
+    tomovepitch := pitch - 128;
+    if (tomovepitch > 5) then
+    toHigh := round(0.6 * -tomovepitch);
+  end
+  else if (high = 1) then
+  begin
+    tomovepitch := 383 - pitch;
+    toHigh := round(0.6 * tomovepitch);
+  end
+  else
+  begin
+    toHigh := 0;
+  end;
+  GetMousePos(pt.x,pt.y);
+  deg := calculateDifferenceBetweenAngles(rs_GetCompassAngleDegrees, degrees);
+  toMove := Round(3.3333 * deg);
+  AL_BrakeMMouse(Point(pt.x + toMove,pt.y + toHigh), 0, 10, False);
+end;
+
+procedure MakeCompassMM(degrees,high:integer);
+var
+  pt:TPoint;
+  first:extended;
+begin
+  if not UseMiddleMouse then
+  begin
+    //This function is only called to set the camera angle low so other options are not necessary.
+    KeyDown(40);
+    Sleep(900 + Random(400));
+    KeyUp(40);
+    Exit;
+  end;
+
+  Al_SetMouseSpeed(randomrange(12,13));
+
+  first := rs_GetCompassAngleDegrees;
+  GetMousePos(pt.x,pt.y);
+  if not(PointInBox(pt,inttobox(MSX1 + 10,MSY1 + 5,MSX2 -10,MSY2 - 5))) then
+  begin
+    GaussBox(pt.x,pt.y,MSX1 + 10,MSY1 + 5,MSX2 -10,MSY2 - 5);
+    MMouse(pt.x,pt.y,0,0);
+    sleep(randomrange(100,200));
+  end;
+  GetMousePos(pt.x,pt.y);
+  HoldMouse(pt.x, pt.y, mouse_middle);
+  MMouseMiddleCompass(degrees,high);
+  while (abs(calculateDifferenceBetweenAngles(rs_GetCompassAngleDegrees, degrees)) > 5) and not(first = rs_GetCompassAngleDegrees) do
+  begin
+    first := rs_GetCompassAngleDegrees;
+    MMouseMiddleCompass(degrees,high);
+    sleep(iGaussRange(150,300));
+  end;
+  GetMousePos(pt.x,pt.y);
+  ReleaseMouse(pt.x, pt.y, mouse_middle);
+  Al_SetMouseSpeed(randomrange(19,23));
+end;
+
 function JumpDitch:boolean;
 var
   CTS,t,count,x,y: Integer;
@@ -1002,12 +1118,13 @@ begin
       AL_BrakeMMouse(Point(x, y), 7, 7, False);
       if (R_SelectOption('Cross')) then
       begin
-        if (GetRunEnergy() >= randomRange(45,55)) then
+        sleep(iGaussRange(100,300));
+        case random(5) of
+          1..3:MakeCompassMM(0,0);
+          4:sleep(random(100));
+        end;
+        if (R_GetRunEnergy >= randomRange(45,55)) then
         F_SetRun(true);
-        R_MakeCompass('n');
-        KeyDown(40);
-        Sleep(900 + Random(400));
-        KeyUp(40);
         MarkTime(t);
         while (not InWild) and (TimeFromMark(t) < 4000) do
         begin
@@ -1039,11 +1156,12 @@ begin
   Result := false;
   if R_GetHealth < 20 then
   begin
+    SaveScreenshot('C:\Simba\Screenshots');
     Teleport;
     Result := true;
   end;
 end;
-
+        {
 function TeleportMage: boolean;
 var
   MageNPC: TNPC;
@@ -1100,6 +1218,10 @@ begin
   end;
 end;
 
+}
+
+//Used when navigated by spam clicking
+{
 function CheckForBrokenRocks:boolean;
 var
   CTS, X, Y, count: Integer;
@@ -1130,7 +1252,7 @@ begin
     end;
   end;
 end;
-
+  }
 
 function RockCheck:boolean;
 var
@@ -1172,6 +1294,7 @@ begin
     count := (Box.Y2 - Box.Y1);
     if  count > 45 then
     begin
+    {
       if CheckForBrokenRocks then
       begin
         if DoDebug then
@@ -1179,6 +1302,7 @@ begin
         Result := true;
         Exit;
       end;
+      }
       MiddleTPAEx(ATPA[0], X, Y);
       if (pos('Mine', R_GetUpText) > 0)then
       begin
@@ -1191,6 +1315,8 @@ begin
             FindRandoms;
             CheckHealth;
             Sleep(200);
+            if Random(2) = 1 then
+            SleepAndMoveMouse(randomRange(150,300));
           end;
         end;
         Result := true;
@@ -1228,7 +1354,7 @@ begin
     CheckHealth;
     Sleep(200);
   end;
-  WriteLn(GetBlackChatMessage);
+ // WriteLn(GetBlackChatMessage);
   if FindBlackChatMessage('past while') then
   begin
     while not InCenter do
@@ -1267,6 +1393,8 @@ begin
             FindRandoms;
             CheckHealth;
             Sleep(200);
+            if Random(2) = 1 then
+            SleepAndMoveMouse(randomRange(150,300));
           end;
         end;
         Result := true;
@@ -1299,11 +1427,22 @@ var
   Box: TBox;
 
 begin
-  R_MakeCompass('n');
+  //R_MakeCompass('n');
+  //Writeln(R_getcamerapitch);
+
+  if InAbyss then
+  begin
+    Result := true;
+    exit;
+  end;
+
+  if  R_getcamerapitch > 300 then
+  MakeCompassMM(0,0);
+
   CTS := GetColorToleranceSpeed;
   SetColorToleranceSpeed(2);
-  SetToleranceSpeed2Modifiers(0.12, 1.10);
-  FindColorsSpiralTolerance(MSCX, MSCY, TPA, 398442, MSX1, MSY1, MSX2, MSY2, 12);
+  SetToleranceSpeed2Modifiers(0.07, 0.68);
+  FindColorsSpiralTolerance(MSCX, MSCY, TPA, 858746, MSX1, MSY1, MSX2, MSY2, 5);
   ColorToleranceSpeed(CTS);
   ATPA := ClusterTPA(TPA, 10);
   SortATPASize(ATPA,true);
@@ -1317,7 +1456,7 @@ begin
     count := (Box.X2 - Box.X1)
     else
     count := (Box.Y2 - Box.Y1);
-    if  count >  15 then
+    if  count >  20 then
     begin
       Writeln('Found Mage');
       MiddleTPAEx(ATPA[0], X, Y);
@@ -1350,10 +1489,24 @@ function CheckAb:boolean;
 begin
   Result := InCenter or CheckHealth or CheckForObstacles;
 end;
+
+function CheckHealthWild:boolean;
+begin
+  Result := false;
+  if R_GetHealthPercent < 80 then
+  begin
+    SaveScreenshot('C:\Simba\Screenshots');
+    Teleport;
+    Result := true;
+  end;
+end;
+
+
 function CheckMage:boolean;
 begin
-  Result := InAbyss or CheckHealth or MageCheck;
+  Result := InAbyss or CheckHealthWild or MageCheck;
 end;
+
 function DoWalkChecking:boolean;
 begin
   case WalkChecking of
@@ -1389,13 +1542,16 @@ begin
       begin
         repeat
           if DoWalkChecking then Exit;
-          sleep(50 + random(50));
+          Sleep(100 + random(50));
+
           FindRandoms;
         until (R_IsWalking or ((GetSystemTime - t) > (1000 + random(500))));
       end;
       repeat
         if DoWalkChecking then Exit;
-        sleep(50 + random(50));
+
+        Sleep(100 + random(50));
+
         FindRandoms;
       until ((R_NearTile(TheTile, 5)));
     until ((R_NearTile(TheTile, 5)) or ((GetSystemTime - t) > 59999));
@@ -1411,13 +1567,17 @@ begin
       begin
         repeat
           if DoWalkChecking then Exit;
-          sleep(50 + random(50));
+
+          Sleep(100 + random(50));
+
           FindRandoms;
         until (R_IsWalking or ((GetSystemTime - t) > (1000 + random(500))));
       end;
       repeat
         if DoWalkChecking then Exit;
-        sleep(50 + random(50));
+
+        Sleep(100 + random(50));
+
         FindRandoms;
       until ((R_NearTile(TheTile, 5) and R_TileOnMM(NextPoint)) or not (R_IsWalking) or InCenter);
     until ((R_NearTile(TheTile, 5) and R_TileOnMM(NextPoint)) or ((GetSystemTime - t) > 59999));
@@ -1535,7 +1695,7 @@ begin
     'mage': //
     begin
       Writeln('Walkto mage');
-      if (getRunEnergy() >= randomRange(45,55)) then
+      if (R_GetRunEnergy >= randomRange(45,55)) then
       F_SetRun(true);
       WalkCheck(toMage,'mage');
       Result := true;
@@ -1550,8 +1710,10 @@ var
 begin
   FindRandoms;
   if CheckHealth then Exit;
-  top := [Point(3016, 4831), Point(3015, 4832), Point(3015, 4833), Point(3015, 4834), Point(3015, 4835), Point(3015, 4836), Point(3016, 4837), Point(3017, 4838), Point(3017, 4839), Point(3017, 4840), Point(3017, 4841), Point(3018, 4842), Point(3019, 4843), Point(3020, 4844), Point(3020, 4845), Point(3021, 4845), Point(3022, 4846), Point(3023, 4847), Point(3024, 4848), Point(3025, 4849), Point(3026, 4850), Point(3027, 4851), Point(3028, 4851), Point(3029, 4851), Point(3030, 4851), Point(3031, 4851), Point(3032, 4851), Point(3033, 4852), Point(3034, 4853), Point(3035, 4854), Point(3036, 4854), Point(3037, 4855), Point(3038, 4855), Point(3039, 4856), Point(3040, 4856), Point(3041, 4856), Point(3041, 4855), Point(3042, 4855), Point(3043, 4854), Point(3044, 4853), Point(3045, 4852), Point(3046, 4852), Point(3047, 4852), Point(3048, 4852), Point(3049, 4852), Point(3050, 4852), Point(3051, 4852), Point(3052, 4851), Point(3053, 4850), Point(3054, 4850), Point(3054, 4849), Point(3055, 4848), Point(3056, 4848), Point(3057, 4848), Point(3058, 4848), Point(3059, 4847), Point(3059, 4846), Point(3059, 4845), Point(3059, 4844), Point(3059, 4843), Point(3060, 4842), Point(3060, 4841), Point(3060, 4840), Point(3060, 4839), Point(3060, 4838), Point(3060, 4837), Point(3060, 4836), Point(3060, 4835), Point(3060, 4834), Point(3061, 4833), Point(3061, 4834), Point(3061, 4835), Point(3062, 4835), Point(3063, 4835), Point(3063, 4834), Point(3063, 4833), Point(3063, 4832), Point(3063, 4831)];
-  bot := [Point(3063, 4831), Point(3062, 4830), Point(3062, 4829), Point(3061, 4828), Point(3061, 4827), Point(3060, 4826), Point(3060, 4825), Point(3060, 4824), Point(3060, 4823), Point(3060, 4822), Point(3060, 4821), Point(3060, 4820), Point(3059, 4819), Point(3059, 4818), Point(3058, 4817), Point(3057, 4816), Point(3057, 4815), Point(3056, 4814), Point(3055, 4814), Point(3054, 4814), Point(3053, 4813), Point(3052, 4812), Point(3052, 4811), Point(3052, 4810), Point(3051, 4810), Point(3050, 4809), Point(3049, 4809), Point(3048, 4809), Point(3047, 4809), Point(3046, 4809), Point(3045, 4810), Point(3044, 4810), Point(3043, 4810), Point(3042, 4810), Point(3041, 4810), Point(3040, 4810), Point(3039, 4810), Point(3038, 4810), Point(3037, 4810), Point(3036, 4810), Point(3035, 4810), Point(3034, 4810), Point(3033, 4810), Point(3032, 4810), Point(3031, 4810), Point(3030, 4810), Point(3029, 4809), Point(3028, 4809), Point(3027, 4809), Point(3026, 4810), Point(3025, 4811), Point(3025, 4812), Point(3024, 4812), Point(3024, 4813), Point(3023, 4813), Point(3023, 4814), Point(3022, 4815), Point(3021, 4816), Point(3020, 4817), Point(3019, 4818), Point(3018, 4819), Point(3017, 4820), Point(3017, 4821), Point(3017, 4822), Point(3017, 4823), Point(3017, 4824), Point(3017, 4825), Point(3017, 4826), Point(3017, 4827), Point(3016, 4828), Point(3015, 4829), Point(3016, 4829), Point(3016, 4830), Point(3016, 4831)];
+  top := [Point(3016, 4831), Point(3015, 4832), Point(3015, 4833), Point(3015, 4834), Point(3015, 4835), Point(3015, 4836), Point(3016, 4837), Point(3017, 4838), Point(3017, 4839), Point(3017, 4840), Point(3017, 4841), Point(3018, 4842), Point(3019, 4843), Point(3020, 4844), Point(3020, 4845), Point(3021, 4845), Point(3022, 4846), Point(3023, 4847), Point(3024, 4848), Point(3025, 4849), Point(3026, 4850), Point(3027, 4851), Point(3028, 4851), Point(3029, 4851), Point(3030, 4851), Point(3031, 4851), Point(3032, 4851), Point(3033, 4852), Point(3034, 4853), Point(3035, 4854), Point(3036, 4854), Point(3037, 4855), Point(3038, 4855), Point(3039, 4856), Point(3040, 4856), Point(3041, 4856), Point(3041, 4855), Point(3042, 4855), Point(3043, 4854), Point(3044, 4853), Point(3045, 4852), Point(3046, 4852), Point(3047, 4852), Point(3048, 4852), Point(3049, 4852), Point(3050, 4852), Point(3051, 4852), Point(3052, 4851), Point(3053, 4850), Point(3054, 4850), Point(3054, 4849), Point(3055, 4848), Point(3056, 4848), Point(3
+  057, 4848), Point(3058, 4848), Point(3059, 4847), Point(3059, 4846), Point(3059, 4845), Point(3059, 4844), Point(3059, 4843), Point(3060, 4842), Point(3060, 4841), Point(3060, 4840), Point(3060, 4839), Point(3060, 4838), Point(3060, 4837), Point(3060, 4836), Point(3060, 4835), Point(3060, 4834), Point(3061, 4833), Point(3061, 4834), Point(3061, 4835), Point(3062, 4835), Point(3063, 4835), Point(3063, 4834), Point(3063, 4833), Point(3063, 4832), Point(3063, 4831)];
+  bot := [Point(3063, 4831), Point(3062, 4830), Point(3062, 4829), Point(3061, 4828), Point(3061, 4827), Point(3060, 4826), Point(3060, 4825), Point(3060, 4824), Point(3060, 4823), Point(3060, 4822), Point(3060, 4821), Point(3060, 4820), Point(3059, 4819), Point(3059, 4818), Point(3058, 4817), Point(3057, 4816), Point(3057, 4815), Point(3056, 4814), Point(3055, 4814), Point(3054, 4814), Point(3053, 4813), Point(3052, 4812), Point(3052, 4811), Point(3052, 4810), Point(3051, 4810), Point(3050, 4809), Point(3049, 4809), Point(3048, 4809), Point(3047, 4809), Point(3046, 4809), Point(3045, 4810), Point(3044, 4810), Point(3043, 4810), Point(3042, 4810), Point(3041, 4810), Point(3040, 4810), Point(3039, 4810), Point(3038, 4810), Point(3037, 4810), Point(3036, 4810), Point(3035, 4810), Point(3034, 4810), Point(3033, 4810), Point(3032, 4810), Point(3031, 4810), Point(3030, 4810), Point(3029, 4809), Point(3028, 4809), Point(3027, 4809), Point(3026, 4810), Point(3025, 4811), Point(3025, 4812), Point(3024, 4812), Point(3
+  024, 4813), Point(3023, 4813), Point(3023, 4814), Point(3022, 4815), Point(3021, 4816), Point(3020, 4817), Point(3019, 4818), Point(3018, 4819), Point(3017, 4820), Point(3017, 4821), Point(3017, 4822), Point(3017, 4823), Point(3017, 4824), Point(3017, 4825), Point(3017, 4826), Point(3017, 4827), Point(3016, 4828), Point(3015, 4829), Point(3016, 4829), Point(3016, 4830), Point(3016, 4831)];
 
   loc := R_GetTileGlobal;
   F_SetRun(true);
@@ -1718,7 +1880,8 @@ begin
     loc := R_GetTileGlobal;
   end;
   sleep(randomrange(2000,3000));
-  ElitePath([Point(2893, 9907), Point(2894, 9907), Point(2895, 9907), Point(2896, 9907), Point(2897, 9907), Point(2898, 9908), Point(2899, 9909), Point(2900, 9910), Point(2901, 9910), Point(2902, 9911), Point(2903, 9912), Point(2904, 9912), Point(2905, 9912), Point(2906, 9912), Point(2907, 9912), Point(2908, 9912), Point(2909, 9912), Point(2910, 9912), Point(2911, 9912), Point(2912, 9912), Point(2913, 9912), Point(2914, 9912), Point(2915, 9912), Point(2916, 9912), Point(2917, 9912), Point(2918, 9912), Point(2919, 9912), Point(2920, 9912), Point(2921, 9912), Point(2922, 9911), Point(2923, 9911), Point(2924, 9911), Point(2925, 9911), Point(2926, 9911), Point(2927, 9911), Point(2928, 9911), Point(2929, 9911), Point(2930, 9911), Point(2931, 9910), Point(2932, 9910), Point(2933, 9910), Point(2934, 9910), Point(2935, 9909), Point(2936, 9909), Point(2936, 9908), Point(2936, 9907), Point(2936, 9906), Point(2936, 9905), Point(2936, 9904), Point(2936, 9903), Point(2936, 9902), Point(2937, 9901), Point(2937, 9900), Point(2937, 9899), Point(2936, 9899), Point(2936, 9898), Point(2936, 9897), Point(2936, 9896), Point(2935, 9895), Point(2934, 9894), Point(2933, 9894), Point(2932, 9894), Point(2931, 9894), Point(2930, 9894), Point(2929, 9894), Point(2928, 9894), Point(2927, 9894), Point(2926, 9894), Point(2925, 9894), Point(2924, 9894), Point(2923, 9894), Point(2922, 9894), Point(2921, 9894), Point(2920, 9893), Point(2920, 9894), Point(2919, 9894)]);
+  ElitePath([Point(2893, 9907), Point(2894, 9907), Point(2895, 9907), Point(2896, 9907), Point(2897, 9907), Point(2898, 9908), Point(2899, 9909), Point(2900, 9910), Point(2901, 9910), Point(2902, 9911), Point(2903, 9912), Point(2904, 9912), Point(2905, 9912), Point(2906, 9912), Point(2907, 9912), Point(2908, 9912), Point(2909, 9912), Point(2910, 9912), Point(2911, 9912), Point(2912, 9912), Point(2913, 9912), Point(2914, 9912), Point(2915, 9912), Point(2916, 9912), Point(2917, 9912), Point(2918, 9912), Point(2919, 9912), Point(2920, 9912), Point(2921, 9912), Point(2922, 9911), Point(2923, 9911), Point(2924, 9911), Point(2925, 9911), Point(2926, 9911), Point(2927, 9911), Point(2928, 9911), Point(2929, 9911), Point(2930, 9911), Point(2931, 9910), Point(2932, 9910), Point(2933, 9910), Point(2934, 9910), Point(2935, 9909), Point(2936, 9909), Point(2936, 9908), Point(2936, 9907), Point(2936, 9906), Point(2936, 9905), Point(2936, 9904), Point(2936, 9903), Point(2936, 9902), Point(2937, 9901), Point(2937, 9900), Poin
+  t(2937, 9899), Point(2936, 9899), Point(2936, 9898), Point(2936, 9897), Point(2936, 9896), Point(2935, 9895), Point(2934, 9894), Point(2933, 9894), Point(2932, 9894), Point(2931, 9894), Point(2930, 9894), Point(2929, 9894), Point(2928, 9894), Point(2927, 9894), Point(2926, 9894), Point(2925, 9894), Point(2924, 9894), Point(2923, 9894), Point(2922, 9894), Point(2921, 9894), Point(2920, 9893), Point(2920, 9894), Point(2919, 9894)]);
   sleep(randomrange(2000,3000));
   R_MakeCompass('n');
   repeat
@@ -1736,21 +1899,33 @@ end;
 
 procedure EnergyPot;
 begin
-  if UseEnergyPots and (getRunEnergy() < randomrange(49,53))then
+  if UseEnergyPots and (R_GetRunEnergy < randomrange(49,53))then
   begin
     FindRandoms;
-    R_BankItemsCustom(Point(3095,3491),4,28,[5,1]);
+    if (R_GetRunEnergy< 19) then
+    R_BankItemsCustom(Point(3095,3491),NumOfPouches + 1,28,[EnergyPotBankSlot,2])
+    else
+    R_BankItemsCustom(Point(3095,3491),NumOfPouches + 1,28,[EnergyPotBankSlot,1]);
+
     while R_HasInvItem(3009) or R_HasInvItem(3011) or R_HasInvItem(3013) or R_HasInvItem(3015)  do
     begin
       HumanInvMouse(R_GetInvItemSlot(3009),mouse_left);
       HumanInvMouse(R_GetInvItemSlot(3011),mouse_left);
       HumanInvMouse(R_GetInvItemSlot(3013),mouse_left);
       HumanInvMouse(R_GetInvItemSlot(3015),mouse_left);
+      sleep(iGaussRange(300,550));
     end;
   end;
 end;
 procedure FillPouches;
+var
+  spd:integer;
 begin
+  spd := MouseSpeed;
+
+  Al_SetMouseSpeed(randomrange(13,15));
+
+
   case NumOfPouches of
     1: //
     begin
@@ -1782,6 +1957,7 @@ begin
       FilledFirst := not FilledFirst;
     end;
   end;
+  Al_SetMouseSpeed(spd);
 end;
 
 procedure Bank;
@@ -1819,7 +1995,7 @@ end;
 
 function HasBrokenPouch:boolean;
 begin
-  Result := R_HasItemQuick([5514,5516]);
+  Result := R_HasItemQuick([5514,5516,5512]);
 end;
 
 procedure NavigateCenter;
@@ -2066,19 +2242,49 @@ begin
   end;
 end;
 
-
 procedure CraftRunes;
+var
+  x,y:integer;
 begin
   WriteLn('CraftRunes');
   FindRandoms;
   R_HumanInteractTile(AltarTile,'Craft-rune');
-  sleep(randomrange(1200,1400));
+  sleep(randomrange(200,800));
+  case random(9) of
+    1..5: HumanInvMouse(1,mouse_move);
+    6..7:sleepandmovemouse(random(400));
+    8:antiban;
+  end;
+  sleep(randomrange(800,900));
   while(R_IsAnimating) do
   sleep(100);
 
   EmptyPouches;
   R_HumanInteractTile(AltarTile,'Craft-rune');
-  sleep(randomrange(1200,1400));
+  sleep(randomrange(300,800));
+  if NumOfPouches = 4 then
+  begin
+    case random(9) of
+      1..5: HumanInvMouse(3,mouse_move);
+      6..7:sleepandmovemouse(random(400));
+      8:antiban;
+    end;
+  end
+  else
+  begin
+    case random(6) of
+      1..3: //
+      begin
+        Al_GameTab(tab_equip);
+        sleep(randomrange(300,400));
+        GaussBox(x,y,625,248,660,283);
+        AL_BrakeMMouse(Point(x, y), 0, 0, False);
+      end;
+      4..5:sleepandmovemouse(random(400));
+      5:antiban;
+    end;
+  end;
+  sleep(randomrange(600,800));
   while(R_IsAnimating) do
   sleep(100);
 
@@ -2086,17 +2292,30 @@ begin
   begin
     EmptyPouches;
     R_HumanInteractTile(AltarTile,'Craft-rune');
-    sleep(randomrange(1200,1400));
+    sleep(randomrange(300,800));
+    case random(6) of
+      1..3: //
+      begin
+        Al_GameTab(tab_equip);
+        sleep(randomrange(300,400));
+        GaussBox(x,y,625,248,660,283);
+        AL_BrakeMMouse(Point(x, y), 0, 0, False);
+      end;
+      4..5:sleepandmovemouse(random(400));
+      5:antiban;
+    end;
+    sleep(randomrange(600,800));
     while(R_IsAnimating) do
     sleep(100);
   end;
 end;
-
+            {
 function MageTest: boolean;
 var
-  CTS, X, Y, t: Integer;
+  CTS, X, Y, t, count: Integer;
   TPA: TPointArray;
   ATPA: array of TPointArray;
+  Box:TBox;
 begin
   Writeln('TeleportMage');
   if InAbyss then
@@ -2104,8 +2323,10 @@ begin
     Result := true;
     exit;
   end;
-  R_MakeCompass('n');
-  SetAngle(1);
+  //R_MakeCompass('n');
+  //SetAngle(1);
+  if  R_getcamerapitch > 150 then
+   MakeCompassMM(0,0);
   CTS := GetColorToleranceSpeed;
   SetColorToleranceSpeed(2);
   SetToleranceSpeed2Modifiers(0.12, 1.10);
@@ -2118,6 +2339,14 @@ begin
   SMART_DebugATPA(true, atpa);
   if (length(ATPA) > 0) then
   begin
+
+  Box := GetTPABounds(ATPA[0]);
+    if (Box.X2 - Box.X1) > (Box.Y2 - Box.Y1) then
+    count := (Box.X2 - Box.X1)
+    else
+    count := (Box.Y2 - Box.Y1);
+    if  count > 15 then
+    begin
     MiddleTPAEx(ATPA[0], X, Y);
     Al_SetMouseSpeed(randomrange(80,90));
     AL_BrakeMMouse(Point(x, y), 7, 7,false);
@@ -2136,8 +2365,9 @@ begin
       Result := true;
     end
   end;
+  end;
 end;
-
+   }
 procedure RepairPouch;
 var
   CTS, X, Y, count,t,i: Integer;
@@ -2145,12 +2375,13 @@ var
   ATPA: array of TPointArray;
   Box: TBox;
 begin
+  if not UseEnergyPots then
   F_SetRun(false);
-  if not (R_NearTile(DarkMageTile, 4)) then
+  if not (R_NearTile(DarkMageTile, 2)) then
   R_BlindWalk(DarkMageTile);
   while(R_IsWalking)do
   sleep(100);
-  if not (R_NearTile(DarkMageTile, 4)) then
+  if not (R_NearTile(DarkMageTile, 2)) then
   Exit;
   CTS := GetColorToleranceSpeed;
   SetColorToleranceSpeed(2);
@@ -2231,7 +2462,7 @@ begin
     if not AtMage then
     Walkto('mage')
     else
-    Magetest;//TeleportMage;
+    MageCheck;//TeleportMage;
   end;
 end;
 
